@@ -6,38 +6,76 @@ import re
 # 导入json模块
 import json
 import base64
-from tencentcloud.asr.v20190614 import asr_client, models
+import subprocess
+from  tencentcloud.asr.v20190614 import asr_client, models
 from tencentcloud.common import credential
 from moviepy import AudioFileClip
 title=""
-url ="https://www.bilibili.com/video/BV1qt411j7fV/"
+
+url ="https://www.bilibili.com/video/BV1jpEYzHEhd/?spm_id_from=333.337.search-card.all.click"
 cookie = ""
+headers = {
+    "Cookie": cookie,
+    "Referer": url,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+}
+def chunk_download(file_url, filename):
+    try:
+        with requests.get(file_url, headers=headers, stream=True, timeout=10) as r:
+            r.raise_for_status()
+            with open(filename, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+        print(f"下载完成：{filename}")
+    except Exception as e:
+        print(f"下载失败：{filename}，原因：{e}")
 def download_video(url, cookie):
-    headers = {
-            "Referer": url,
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    }
+   
     response = requests.get(url=url, headers=headers)
     html = response.text
     title = re.findall('title="(.*?)"', html)[0]
     print(title)
-    # # 提取视频信息
+    # 提取视频信息
     info = re.findall('window.__playinfo__=(.*?)</script>', html)[0]
-    # print(info)
-    # info -> json字符串转成json字典
+    with open('info.txt', 'w', encoding='utf-8') as f:
+        f.write(info)
     json_data = json.loads(info)
-    # # 提取视频链接
+    # 提取视频链接
     video_url = json_data['data']['dash']['video'][0]['baseUrl']
     audio_url = json_data['data']['dash']['audio'][0]['baseUrl']
-    video_content = requests.get(url=video_url, headers=headers).content
-    audio_content = requests.get(url=audio_url, headers=headers).content
-    # 保存数据
-    os.makedirs(title,exist_ok=True)
-    with open(title+'/'+title + '.mp4', mode='wb') as v:
-        v.write(video_content)
-    with open( title+'/'+title + '.mp3', mode='wb') as a:
-        a.write(audio_content)
-    with open( title+'/'+title +'.wav', mode='wb') as a:
-        a.write(audio_content)
+
+    os.makedirs(title, exist_ok=True)
+
+
+
+    chunk_download(video_url, f"{title}/{title}.mp4")
+    chunk_download(audio_url, f"{title}/{title}.mp3")
+    chunk_download(audio_url, f"{title}/{title}.wav")
+    video_path = f"{title}/{title}.mp4"
+    audio_path = f"{title}/{title}.mp3"
+    output_path = f"{title}/{title}_merged.mp4"
+    try:
+        cmd = [
+            "ffmpeg", 
+            "-i", video_path, 
+            "-i", audio_path, 
+            "-c:v", "copy", 
+            "-c:a", "aac", 
+            "-strict", "experimental",
+            output_path
+        ]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        if result.returncode == 0:
+            print(f"合成完成：{output_path}")
+        else:
+            print(f"合成失败，FFmpeg返回码: {result.returncode}")
+            print(f"错误信息: {result.stderr.decode('utf-8', errors='ignore')}")
+    except Exception as e:
+        print(f"合成失败：{e}")
+        
     return title
+
 download_video(url, cookie)
+# ...existing code...
