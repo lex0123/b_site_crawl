@@ -11,9 +11,8 @@ from  tencentcloud.asr.v20190614 import asr_client, models
 from tencentcloud.common import credential
 from moviepy import AudioFileClip
 title=""
-
-url ="https://www.bilibili.com/video/BV1jpEYzHEhd/?spm_id_from=333.337.search-card.all.click"
-cookie = ""
+cookie = os.getenv("b_cookie")
+url ="https://www.bilibili.com/video/BV1ra4y1r7ta?spm_id_from=333.788.player.switch&vd_source=e4be74da35c9c95e7756dfd980a19587"
 headers = {
     "Cookie": cookie,
     "Referer": url,
@@ -38,10 +37,8 @@ def download_video(url, cookie):
     print(title)
     # 提取视频信息
     info = re.findall('window.__playinfo__=(.*?)</script>', html)[0]
-    with open('info.txt', 'w', encoding='utf-8') as f:
-        f.write(info)
-    json_data = json.loads(info)
     # 提取视频链接
+    json_data = json.loads(info)
     video_url = json_data['data']['dash']['video'][0]['baseUrl']
     audio_url = json_data['data']['dash']['audio'][0]['baseUrl']
 
@@ -55,6 +52,8 @@ def download_video(url, cookie):
     video_path = f"{title}/{title}.mp4"
     audio_path = f"{title}/{title}.mp3"
     output_path = f"{title}/{title}_merged.mp4"
+    if os.path.exists(output_path):
+        os.remove(output_path)
     try:
         cmd = [
             "ffmpeg", 
@@ -66,7 +65,7 @@ def download_video(url, cookie):
             output_path
         ]
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
+        os.remove(video_path)
         if result.returncode == 0:
             print(f"合成完成：{output_path}")
         else:
