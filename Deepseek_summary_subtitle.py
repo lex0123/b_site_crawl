@@ -53,7 +53,6 @@ print(f"字幕已保存至: {subtitle_path}")
     
     # 组合成完整文本，用于发送给DeepSeek
 full_text = "\n".join(contents)
-# 调用DeepSeek API进行总结
 deepseek_api_key = os.getenv("deepseek-api-key")
 if not deepseek_api_key:
     print("警告: 未找到DeepSeek API密钥，跳过总结步骤")
