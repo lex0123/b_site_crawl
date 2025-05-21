@@ -13,11 +13,15 @@ from moviepy import AudioFileClip
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import random
-title=""
 cookie = os.getenv("b_cookie")
-url =[
-  "https://www.bilibili.com/video/BV16eJBzGEAY/?spm_id_from=333.337.search-card.all.click&vd_source=e4be74da35c9c95e7756dfd980a19587"
-    ]
+bvnames=["BV1tcJzz9Etx"]
+refers=[]
+urls=[]
+os.makedirs("wav", exist_ok=True)   
+for bvname in bvnames:
+    refers.append(f"https://www.bilibili.com/{bvname}")
+    urls.append(f"https://www.bilibili.com/video/{bvname}/?spm_id_from=333.337.search-card.all.click&vd_source=e4be74da35c9c95e7756dfd980a19587")
+
 headers = {
     "Cookie": cookie,
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -36,7 +40,6 @@ def chunk_download(file_url, filename, task_headers):
                 
                 # 减小chunk大小到1MB
                 chunk_size = 1024 * 1024  # 1MB
-                
                 print(f"开始下载: {filename} (总大小: {total_size/1024/1024:.2f} MB)")
                 start_time = time.time()
                 with open(filename, "wb") as f:
@@ -182,5 +185,5 @@ def download_audio(urls, cookie):
     for url in urls:
         completed_titles.append(download_single_audio(url, headers))
     return completed_titles
-print("完成：",download_video(url, cookie))
+print("完成：",download_video(urls, cookie))
 # ...existing code...

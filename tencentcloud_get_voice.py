@@ -10,10 +10,23 @@ from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentClo
 from tencentcloud.asr.v20190614 import asr_client, models
 from pydub import AudioSegment
 import shutil
-tecentid = os.getenv("tencent_id")
-tecentkey = os.getenv("tencent_key")
+import requests
+import re
+tencentid = os.getenv("tencent_id")
+tencentkey = os.getenv("tencent_key")
 os.makedirs("temp", exist_ok=True)
-title = "【量化快报】茅指数战法可能是表象，抢权交易，看不懂了，高标切换或者休息"
+cookie = os.getenv("b_cookie")
+bvname="BV1tcJzz9Etx"
+refer=f"https://www.bilibili.com/{bvname}"
+url = f"https://www.bilibili.com/video/{bvname}"
+headers = {
+    "Cookie": cookie,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+}
+response = requests.get(url=url, headers=headers)
+html = response.text
+title = re.findall('title="(.*?)"', html)[0]
+print(f"处理视频: {title}")
 title1 =title+"\\"+title
 
 def split_audio(input_file, output_dir, max_size=5*1024*1024):
@@ -32,11 +45,11 @@ def split_audio(input_file, output_dir, max_size=5*1024*1024):
         chunk = audio[start:end]
         chunk_path = os.path.join(output_dir, f"chunk_{i}.mp3")
         chunk.export(chunk_path, format="mp3")
-def mp3_to_text_tencent(mp3_file, tecentid, tecentkey):
+def mp3_to_text_tencent(mp3_file, tencentid, tencentkey):
     with open(mp3_file, 'rb') as f:
         audio_data = base64.b64encode(f.read()).decode('utf-8')
     # 初始化腾讯云 ASR 客户端
-    cred = credential.Credential(tecentid, tecentkey)
+    cred = credential.Credential(tencentid, tencentkey)
     client = asr_client.AsrClient(cred, "ap-guangzhou")  # 根据需要选择区域
 
     # 创建请求对象
@@ -62,16 +75,16 @@ def mp3_to_text_tencent(mp3_file, tecentid, tecentkey):
         return result_json["Result"]
     else:
         return "识别失败，请检查音频文件或参数配置！"
-def create_rec_task_with_data(dir, tecentid, tecentkey):
+def create_rec_task_with_data(dir, tencentid, tencentkey):
     """
     从目录中读取切割好的音频文件，逐个上传进行语音识别
     :param dir: 存放音频切片的目录
-    :param tecentid: 腾讯云API ID
-    :param tecentkey: 腾讯云API Key
+    :param tencentid: 腾讯云API ID
+    :param tencentkey: 腾讯云API Key
     :return: 识别任务ID列表
     """
     # 初始化腾讯云客户端
-    cred = credential.Credential(tecentid, tecentkey)
+    cred = credential.Credential(tencentid, tencentkey)
     httpProfile = HttpProfile()
     httpProfile.endpoint = "asr.tencentcloudapi.com"
     clientProfile = ClientProfile()
@@ -109,8 +122,8 @@ def create_rec_task_with_data(dir, tecentid, tecentkey):
         task_ids.append(task_id)
     
     return task_ids
-def get_rec_result(task_ids, tecentid, tecentkey):
-    cred = credential.Credential(tecentid, tecentkey)
+def get_rec_result(task_ids, tencentid, tencentkey):
+    cred = credential.Credential(tencentid, tencentkey)
     client = asr_client.AsrClient(cred, "ap-shanghai")
     results = []
     file=title1+".txt"
@@ -138,10 +151,10 @@ if __name__ == "__main__":
     convert_mp3_to_wav(title1+".mp3", "temp/output.wav")
     file = "temp/output.wav"  # 建议用16k采样率单声道wav
     split_audio(file, "temp\\"+title)
-    task_ids=  create_rec_task_with_data("temp\\"+title, tecentid, tecentkey)
+    task_ids=  create_rec_task_with_data("temp\\"+title, tencentid, tencentkey)
     # task_ids= [12206247150, 12206247222, 12206247332, 12206247401, 12206247477, 12206247585, 12206247637, 12206247766, 12206247839]
     print("Task IDs:",task_ids)
     time.sleep(5)
-    get_rec_result(task_ids, tecentid, tecentkey)
+    get_rec_result(task_ids, tencentid, tencentkey)
     shutil.rmtree("temp")
     
