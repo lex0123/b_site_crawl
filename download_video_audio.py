@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import random
 title=""
-cookie = "buvid3=430277AB-F19D-E42F-B985-4E96B159881A84478infoc; b_nut=1746872884; _uuid=7A7D6A4B-1153-B29C-B944-F5B10F9421B9186258infoc; buvid4=B472E5D9-E55D-DE4D-8AFB-200A83FCA05486323-025051018-BE5tNRPq5Hm1axKT15iGDQ%3D%3D; rpdid=|(JJmY)YRu~~0J'u~RY)~k))m; DedeUserID=3546715265173614; DedeUserID__ckMd5=7b4e3ead3db48297; header_theme_version=CLOSE; enable_web_push=DISABLE; enable_feed_channel=ENABLE; fingerprint=ab96a73572632a9e1ebdd467149da5e1; buvid_fp_plain=undefined; buvid_fp=ab96a73572632a9e1ebdd467149da5e1; SESSDATA=cac768bb%2C1763282713%2C5e39d%2A51CjAZ7LI-EqGaLiW_TA1-VzQCfbh_KI35h0sCA2Uutj0OqrgFRPUgAhAt83HNs2auA0QSVk1Ub3lBdEh3bGttdkc1alBxNmJ1RFJBell6bkNxdkNPNkVEb3I5c0NkVVFhdHgtay0ybmtKMFhhYTF6Y2ZiV3E1OWpZLWVxNTY5ZjdxVFREVFlvNDZRIIEC; bili_jct=e832e3adb91f3531b0224708681bdc39; bili_ticket=eyJhbGciOiJIUzI1NiIsImtpZCI6InMwMyIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDc5OTMzMTYsImlhdCI6MTc0NzczNDA1NiwicGx0IjotMX0.I35lF4Hth0G9xTEZtDdF9KfRcfihw6_lenhcGCLh5Q8; bili_ticket_expires=1747993256; CURRENT_QUALITY=120; bmg_af_switch=1; bmg_src_def_domain=i0.hdslb.com; sid=84ex66a0; b_lsid=8AE5C101C_196F24065CF; bp_t_offset_3546715265173614=1069373739180752896; home_feed_column=5; browser_resolution=1432-774; CURRENT_FNVAL=4048"
+cookie = os.getenv("b_cookie")
 url =[
   "https://www.bilibili.com/video/BV16eJBzGEAY/?spm_id_from=333.337.search-card.all.click&vd_source=e4be74da35c9c95e7756dfd980a19587"
     ]
@@ -159,8 +159,10 @@ def download_video(urls, cookie):
     #             executor.shutdown(wait=False)
     # return completed_titles
     # completed_titles = []
+    completed_titles = []
     for url in urls:
-        download_single_video(url, headers)
+        completed_titles.append(download_single_video(url, headers))
+    return completed_titles
 def download_audio(urls, cookie):
     # 这里不使用线程池，因为我实测中发现如果使用线程池会导致连接中断？不知道有没有人有好的办法解决
     ## 或许只爬取网页数据使用线程池会好一点，但是持续连接下载使用线程池会导致连接中断
@@ -178,7 +180,7 @@ def download_audio(urls, cookie):
     #             executor.shutdown(wait=False)
     completed_titles = []
     for url in urls:
-        download_single_audio(url, headers)
+        completed_titles.append(download_single_audio(url, headers))
     return completed_titles
 print("完成：",download_video(url, cookie))
 # ...existing code...
