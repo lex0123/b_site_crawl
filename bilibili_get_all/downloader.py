@@ -13,19 +13,20 @@ from moviepy import AudioFileClip
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import random
-cookie = os.getenv("b_cookie")
-bvnames=["BV1tcJzz9Etx"]
-refers=[]
-urls=[]
-os.makedirs("wav", exist_ok=True)   
-for bvname in bvnames:
-    refers.append(f"https://www.bilibili.com/{bvname}")
-    urls.append(f"https://www.bilibili.com/video/{bvname}/?spm_id_from=333.337.search-card.all.click&vd_source=e4be74da35c9c95e7756dfd980a19587")
-
-headers = {
+# cookie = os.getenv("b_cookie")
+# bvnames=["BV1k6jWzcEKn"]
+# refers=[]
+# urls=[]
+# os.makedirs("wav", exist_ok=True)   
+# for bvname in bvnames:
+#     refers.append(f"https://www.bilibili.com/{bvname}")
+#     urls.append(f"https://www.bilibili.com/video/{bvname}/?spm_id_from=333.337.search-card.all.click&vd_source=e4be74da35c9c95e7756dfd980a19587")
+def get_hearders(cookie):
+    headers = {
     "Cookie": cookie,
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-}
+    }
+    return headers
 
 def chunk_download(file_url, filename, task_headers):
     max_retries = 3
@@ -82,7 +83,8 @@ def chunk_download(file_url, filename, task_headers):
             print(f"\n下载失败：{filename}，原因：{e}")
             break
     return False
-def download_single_audio(url,headers):
+def download_single_audio(url,cookie):
+    headers=get_hearders(cookie)
     headers["Referer"] = url
     try:
         response = requests.get(url=url, headers=headers)
@@ -101,7 +103,8 @@ def download_single_audio(url,headers):
     except Exception as e:
         print(f"处理视频失败：{url}，原因：{e}")
         return None
-def download_single_video(url,headers):
+def download_single_video(url,cookie):
+    headers=get_hearders(cookie)
     headers["Referer"] = url
     try:
         response = requests.get(url=url, headers=headers)
@@ -148,6 +151,7 @@ def download_single_video(url,headers):
         print(f"处理视频失败：{url}，原因：{e}")
         return None
 def download_video(urls, cookie):
+
     # with ThreadPoolExecutor(max_workers=1) as executor:
     #     future_to_url = {executor.submit(download_single_video, url, headers): url for url in urls}
     #     completed_titles = []
@@ -162,11 +166,12 @@ def download_video(urls, cookie):
     #             executor.shutdown(wait=False)
     # return completed_titles
     # completed_titles = []
+    headers=get_hearders(cookie)
     completed_titles = []
     for url in urls:
-        completed_titles.append(download_single_video(url, headers))
+        completed_titles.append(download_single_video(url, cookie))
     return completed_titles
-def download_audio(urls, cookie):
+def download_audio(urls,cookie):
     # 这里不使用线程池，因为我实测中发现如果使用线程池会导致连接中断？不知道有没有人有好的办法解决
     ## 或许只爬取网页数据使用线程池会好一点，但是持续连接下载使用线程池会导致连接中断
     # with ThreadPoolExecutor(max_workers=1) as executor:
@@ -181,9 +186,10 @@ def download_audio(urls, cookie):
     #         except Exception as e:
     #             print(f"处理URL时出错 {url}: {e}")
     #             executor.shutdown(wait=False)
+    headers=get_hearders(cookie)
     completed_titles = []
     for url in urls:
-        completed_titles.append(download_single_audio(url, headers))
+        completed_titles.append(download_single_audio(url, cookie))
     return completed_titles
-print("完成：",download_video(urls, cookie))
+# print("完成：",download_video(urls, cookie))
 # ...existing code...

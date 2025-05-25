@@ -12,39 +12,26 @@ from pydub import AudioSegment
 import shutil
 import requests
 import re
-tencentid = os.getenv("tencent_id")
-tencentkey = os.getenv("tencent_key")
-os.makedirs("temp", exist_ok=True)
-cookie = os.getenv("b_cookie")
-bvname="BV1tcJzz9Etx"
-refer=f"https://www.bilibili.com/{bvname}"
-url = f"https://www.bilibili.com/video/{bvname}"
-headers = {
-    "Cookie": cookie,
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-}
-response = requests.get(url=url, headers=headers)
-html = response.text
-title = re.findall('title="(.*?)"', html)[0]
-print(f"处理视频: {title}")
-title1 =title+"\\"+title
+# tencentid = os.getenv("tencent_id")
+# tencentkey = os.getenv("tencent_key")
+# cookie = os.getenv("b_cookie")
 
 def split_audio(input_file, output_dir, max_size=5*1024*1024):
-    """
-    用pydub将音频文件分割成每段小于max_size（默认10MB）的mp3文件
-    """
-    audio = AudioSegment.from_file(input_file)
-    file_size = os.path.getsize(input_file)
-    duration = len(audio)  # 毫秒
-    bytes_per_ms = file_size / duration
-    chunk_duration_ms = int(max_size / bytes_per_ms)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for i, start in enumerate(range(0, duration, chunk_duration_ms)):
-        end = min(start + chunk_duration_ms, duration)
-        chunk = audio[start:end]
-        chunk_path = os.path.join(output_dir, f"chunk_{i}.mp3")
-        chunk.export(chunk_path, format="mp3")
+        """
+        用pydub将音频文件分割成每段小于max_size（默认10MB）的mp3文件
+        """
+        audio = AudioSegment.from_file(input_file)
+        file_size = os.path.getsize(input_file)
+        duration = len(audio)  # 毫秒
+        bytes_per_ms = file_size / duration
+        chunk_duration_ms = int(max_size / bytes_per_ms)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        for i, start in enumerate(range(0, duration, chunk_duration_ms)):
+            end = min(start + chunk_duration_ms, duration)
+            chunk = audio[start:end]
+            chunk_path = os.path.join(output_dir, f"chunk_{i}.mp3")
+            chunk.export(chunk_path, format="mp3")
 def mp3_to_text_tencent(mp3_file, tencentid, tencentkey):
     with open(mp3_file, 'rb') as f:
         audio_data = base64.b64encode(f.read()).decode('utf-8')
@@ -122,7 +109,7 @@ def create_rec_task_with_data(dir, tencentid, tencentkey):
         task_ids.append(task_id)
     
     return task_ids
-def get_rec_result(task_ids, tencentid, tencentkey):
+def get_rec_result(title1,task_ids, tencentid, tencentkey):
     cred = credential.Credential(tencentid, tencentkey)
     client = asr_client.AsrClient(cred, "ap-shanghai")
     results = []
@@ -147,14 +134,31 @@ def convert_mp3_to_wav(input_mp3, output_wav):
     # 转为单声道、16k采样率
     audio = audio.set_channels(1).set_frame_rate(16000)
     audio.export(output_wav, format="wav")
-if __name__ == "__main__":
+def analysis_voice(bvname,tencentid,tencentkey,cookie):
+    """
+    解析视频音频
+    :param bvname: 视频的BV号
+    :return: None
+    """
+    os.makedirs("temp", exist_ok=True)
+    refer=f"https://www.bilibili.com/{bvname}"
+    url = f"https://www.bilibili.com/video/{bvname}"
+    headers = {
+        "Cookie": cookie,
+        "Referer":refer,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    }
+    response = requests.get(url=url, headers=headers, timeout=10)
+    html = response.text
+    title = re.findall('title="(.*?)"', html)[0]
+    print(f"处理视频: {title}")
+    title1 =title+"\\"+title
     convert_mp3_to_wav(title1+".mp3", "temp/output.wav")
     file = "temp/output.wav"  # 建议用16k采样率单声道wav
     split_audio(file, "temp\\"+title)
-    task_ids=  create_rec_task_with_data("temp\\"+title, tencentid, tencentkey)
-    # task_ids= [12206247150, 12206247222, 12206247332, 12206247401, 12206247477, 12206247585, 12206247637, 12206247766, 12206247839]
+    task_ids= create_rec_task_with_data("temp\\"+title, tencentid, tencentkey)
     print("Task IDs:",task_ids)
     time.sleep(5)
-    get_rec_result(task_ids, tencentid, tencentkey)
+    get_rec_result(title1,task_ids, tencentid, tencentkey)
     shutil.rmtree("temp")
-    
+        
