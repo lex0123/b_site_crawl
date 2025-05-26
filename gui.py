@@ -9,8 +9,8 @@ import json
 import requests
 import re
 from bilibili_get_all.subtitle  import get_video_subtitle
-from bilibili_get_all.downloader import download_video,download_audio     
-from bilibili_get_all.tencent_asr import create_rec_task_with_data, get_rec_result
+from bilibili_get_all.downloader import download_single_audio,download_single_video,download_video,download_audio     
+from bilibili_get_all.tencent_asr import analysis_voice
 # 捕获打印输出以更新UI
 import io
 import sys
@@ -19,22 +19,30 @@ class Worker(QThread):
     update_progress = pyqtSignal(str)
     finished = pyqtSignal(bool, str)
     
-    def __init__(self, bv_number, cookie, api_key):
+    def __init__(self, bv_number, cookie, api_key,task_type, tencent_id=None,tencent_secret=None):
         super().__init__()
         self.bv_number = bv_number
         self.cookie = cookie
         self.api_key = api_key
-        # print(f"Worker initialized with BV: {self.bv_number}, Cookie: {self.cookie}, API Key: {self.api_key}")
-        
-    def run(self):
-            
+        self.task_type = task_type  # 添加任务类型参数
+        self.url= f"https://www.bilibili.com/video/{bv_number}"
+        self.tencent_id = tencent_id
+        self.tencent_secret = tencent_secret
+
+    def run(self):        
         try:
             original_stdout = sys.stdout
             sys.stdout = io.StringIO()
             print(f"开始处理视频：{self.bv_number}")
             # 调用视频字幕提取和总结函数
-            get_video_subtitle(self.api_key, self.bv_number,self.cookie)
-            
+            if self.task_type == "subtitle":
+                get_video_subtitle(self.api_key, self.bv_number,self.cookie)
+            elif self.task_type == "video":
+                download_single_video(self.url,self.cookie)
+            elif self.task_type == "audio":
+                download_single_audio(self.url,self.cookie)
+            elif self.task_type == "asr":
+                analysis_voice(self.bv_number,self.tencent_id,self.tencent_secret,self.cookie)
             # 获取捕获的输出
             output = sys.stdout.getvalue()
             sys.stdout = original_stdout
@@ -66,7 +74,7 @@ class BilibiliApp(QMainWindow):
         
         # BV号输入
         self.bv_input = QLineEdit()
-        self.bv_input.setPlaceholderText("例如：BV1M64y1E7o1,不同bv号之间用逗号隔开")
+        self.bv_input.setPlaceholderText("例如：BV1M64y1E7o1")
         form_layout.addRow("B站视频BV号:", self.bv_input)
         
         # Cookie输入
@@ -117,8 +125,8 @@ class BilibiliApp(QMainWindow):
         self.tencent_api_secret_input.setPlaceholderText("腾讯云API密钥...")
         self.tencent_api_secret_input.setEchoMode(QLineEdit.Password)  # 隐藏敏感信息
         form_layout.addRow("腾讯云API密钥:", self.tencent_api_secret_input)
-
-     
+        
+        
         
         # # 显示API密钥选项
         tencent_api_secret_layout = QHBoxLayout()
@@ -289,16 +297,103 @@ class BilibiliApp(QMainWindow):
         self.statusBar.showMessage("正在处理...")
         
         # 创建并启动工作线程
-        self.worker = Worker(bv_number, cookie, api_key)
-        print("123123123123")
+        self.worker = Worker(bv_number, cookie, api_key, "subtitle")
         self.worker.update_progress.connect(self.update_log)
         self.worker.finished.connect(self.task_completed)
         self.worker.start()
     def downloadvideo(self):
+        """执行下载视频处理"""
+        bv_number = self.bv_input.text().strip()
+        cookie = self.cookie_input.text().strip()
+        api_key = self.api_key_input.text().strip()
+        if not bv_number:
+            QMessageBox.warning(self, "输入错误", "请输入BV号")
+            return
+        if not cookie:
+            QMessageBox.warning(self, "输入错误", "请输入B站Cookie")
+            return
+        
+        # API密钥可选，不强制要求
+        
+        # 清空日志区域
+        self.log_output.clear()
+        
+        # 显示进度条，禁用按钮
+        self.progress_bar.setVisible(True)
+        self.execute_btn.setEnabled(False)
+        self.statusBar.showMessage("正在处理...")
+        
+        # 创建并启动工作线程
+        self.worker = Worker(bv_number, cookie, api_key,"video")
+        self.worker.update_progress.connect(self.update_log)
+        self.worker.finished.connect(self.task_completed)
+        self.worker.start()
         return
     def downloadaudio(self):
+        """执行下载视频处理"""
+        bv_number = self.bv_input.text().strip()
+        cookie = self.cookie_input.text().strip()
+        api_key = self.api_key_input.text().strip()
+        
+        if not bv_number:
+            QMessageBox.warning(self, "输入错误", "请输入BV号")
+            return
+        
+        if not cookie:
+            QMessageBox.warning(self, "输入错误", "请输入B站Cookie")
+            return
+        
+        # API密钥可选，不强制要求
+        
+        # 清空日志区域
+        self.log_output.clear()
+        
+        # 显示进度条，禁用按钮
+        self.progress_bar.setVisible(True)
+        self.execute_btn.setEnabled(False)
+        self.statusBar.showMessage("正在处理...")
+        
+        # 创建并启动工作线程
+        self.worker = Worker(bv_number, cookie, api_key,"audio")
+        self.worker.update_progress.connect(self.update_log)
+        self.worker.finished.connect(self.task_completed)
+        self.worker.start()
         return
     def asr(self):
+        """执行下载视频处理"""
+        bv_number = self.bv_input.text().strip()
+        cookie = self.cookie_input.text().strip()
+        api_key = self.api_key_input.text().strip()
+        tencent_id = self.tencent_api_id_input.text().strip()
+        tencent_secret = self.tencent_api_secret_input.text().strip()
+        if not tencent_id:
+            QMessageBox.warning(self, "输入错误", "请输入腾讯云API ID")
+            return
+        if not tencent_secret:
+            QMessageBox.warning(self, "输入错误", "请输入腾讯云API密钥")
+            return
+        if not bv_number:
+            QMessageBox.warning(self, "输入错误", "请输入BV号")
+            return
+        if not cookie:
+            QMessageBox.warning(self, "输入错误", "请输入B站Cookie")
+            return
+        
+        # API密钥可选，不强制要求
+        
+        # 清空日志区域
+        self.log_output.clear()
+        
+        # 显示进度条，禁用按钮
+        self.progress_bar.setVisible(True)
+        self.execute_btn.setEnabled(False)
+        self.statusBar.showMessage("正在处理...")
+        
+        # 创建并启动工作线程
+        self.worker = Worker(bv_number,cookie,api_key, "asr",tencent_id,tencent_secret)
+        self.worker.update_progress.connect(self.update_log)
+        self.worker.finished.connect(self.task_completed)
+        self.worker.start()
         return
     def update_log(self, text):
         """更新日志区域"""

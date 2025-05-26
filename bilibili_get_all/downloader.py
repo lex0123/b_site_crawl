@@ -84,6 +84,7 @@ def chunk_download(file_url, filename, task_headers):
             break
     return False
 def download_single_audio(url,cookie):
+    os.makedirs("wav", exist_ok=True)
     headers=get_hearders(cookie)
     headers["Referer"] = url
     try:
